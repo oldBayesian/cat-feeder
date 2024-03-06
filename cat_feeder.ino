@@ -12,38 +12,47 @@ if automatic feeding criteria is met, deliver a feeding
  
  */
 
-// Declare program constants and variables
- const unsigned int ledPin = 13;
- const unsigned int testLedPin = 10;
- const unsigned int buttonPin = 7;
- const unsigned int normalFeedDay = 4;
- const unsigned int maxFeedDay = 6;
- const unsigned int maxFeedDayPart = 2;
- const unsigned long feedTime0 = 1000UL * 60 * 60 * 6; // feeding at 6a
- const unsigned long feedTime1 = 1000UL * 60 * 60 * 7; // feeding at 7a
- const unsigned long feedTime2 = 1000UL * 60 * 60 * 17; // feeding at 5p
- const unsigned long feedTime3 = 1000UL * 60 * 60 * 18; // feeding at 6p
- 
- const unsigned long dayPartInterval = (1000UL * 60 * 60 * 12); // day parts are 12 hours
- const unsigned long feedDelayInterval = (1000UL * 10 * 1); // 5 minute delay
+#include <Wire.h>
+#include <Adafruit_MotorShield.h>
 
- unsigned long timeStartDay = 0;
- unsigned long timeElapseDay = 0;
- unsigned long timeStartDayPart = 0;
- unsigned long timeElapseDayPart = 0;
- unsigned long timeLastFeed = 0;
- unsigned long timeElapseLastFeed = 0;
- 
- unsigned int feedCounterDay = 0;
- unsigned int feedCounterDayPart = 0;
- 
- bool isFeedDelay = false;
- bool isFeedTime = false;
- bool canFeed = true;
- 
- unsigned int buttonState = 0;
- unsigned int lastButtonState = 0;
- bool buttonPress = false;
+// Declare constants for wiring
+const unsigned int ledPin = 13;
+const unsigned int buttonPin = 7;
+const unsigned int motorOut = 3;
+
+// Declare program constants and variables
+const unsigned int normalFeedDay = 4;
+const unsigned int maxFeedDay = 6;
+const unsigned int maxFeedDayPart = 2;
+const unsigned long feedTime0 = 1000UL * 60 * 60 * 6; // feeding at 6a
+const unsigned long feedTime1 = 1000UL * 60 * 60 * 7; // feeding at 7a
+const unsigned long feedTime2 = 1000UL * 60 * 60 * 17; // feeding at 5p
+const unsigned long feedTime3 = 1000UL * 60 * 60 * 18; // feeding at 6p
+
+const unsigned long dayPartInterval = (1000UL * 60 * 60 * 12); // day parts are 12 hours
+const unsigned long feedDelayInterval = (1000UL * 10 * 1); // 5 minute delay
+
+unsigned long timeStartDay = 0;
+unsigned long timeElapseDay = 0;
+unsigned long timeStartDayPart = 0;
+unsigned long timeElapseDayPart = 0;
+unsigned long timeLastFeed = 0;
+unsigned long timeElapseLastFeed = 0;
+
+unsigned int feedCounterDay = 0;
+unsigned int feedCounterDayPart = 0;
+
+bool isFeedDelay = false;
+bool isFeedTime = false;
+bool canFeed = true;
+
+unsigned int buttonState = 0;
+unsigned int lastButtonState = 0;
+bool buttonPress = false;
+
+Adafruit_MotorShield AFMS = Adafruit_MotorShield();
+Adafruit_DCMotor *myMotor = AFMS.getMotor(motorOut);
+
 
 void setup() {
   Serial.begin(9600);
@@ -55,17 +64,18 @@ void setup() {
   // setup button and LED
   pinMode(buttonPin, INPUT);
   pinMode(ledPin, OUTPUT);
-  pinMode(testLedPin, OUTPUT);
-  
+
+  // setup motor
+  AFMS.begin();
 }
 
 
 void feed() {
  // activate motor
  Serial.println("Feeding!");
- digitalWrite(testLedPin, HIGH);
- delay(1000 * 2);
- digitalWrite(testLedPin, LOW);
+ myMotor->run(FORWARD);
+ delay(1000 * 10);
+ myMotor->run(RELEASE);
  
  // update variables
  timeLastFeed = millis();
