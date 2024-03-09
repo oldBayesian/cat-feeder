@@ -61,6 +61,7 @@ void setup() {
   
   // start timer for the 24 clock
   timeStartDay = millis();
+  timeStartDayPart = millis();
 
   // setup button and LED
   pinMode(buttonPin, INPUT);
