@@ -14,10 +14,11 @@ if automatic feeding criteria is met, deliver a feeding
 
 #include <Wire.h>
 #include <Adafruit_MotorShield.h>
+#include "utility/Adafruit_MS_PWMServoDriver.h"
 
 // Declare constants for wiring
 const unsigned int ledPin = 13;
-const unsigned int buttonPin = 7;
+const unsigned int buttonPin = 10;
 const unsigned int motorOut = 3;
 
 // Declare program constants and variables
@@ -30,7 +31,7 @@ const unsigned long feedTime2 = 1000UL * 60 * 60 * 17; // feeding at 5p
 const unsigned long feedTime3 = 1000UL * 60 * 60 * 18; // feeding at 6p
 
 const unsigned long dayPartInterval = (1000UL * 60 * 60 * 12); // day parts are 12 hours
-const unsigned long feedDelayInterval = (1000UL * 10 * 1); // 5 minute delay
+const unsigned long feedDelayInterval = (1000UL * 60 * 5); // 5 minute delay
 
 unsigned long timeStartDay = 0;
 unsigned long timeElapseDay = 0;
@@ -66,11 +67,34 @@ void setup() {
   pinMode(ledPin, OUTPUT);
 
   // setup motor
+  Serial.println("Initializing motor");
   AFMS.begin();
+  myMotor->setSpeed(150);
+
+  // run tests
+  // blink the LED
+  Serial.println("LED test");
+  for (int i = 0; i <= 3; i++) {
+    digitalWrite(ledPin, HIGH);
+    delay(1000 * 0.5);
+    digitalWrite(ledPin, LOW);
+    delay(1000 * 0.5);
+  }
+  
+
+  // run the motor in short bursts
+  Serial.println("Motor test");
+  for (int i = 0; i <= 3; i++) {
+   Serial.println(i);
+   myMotor->run(FORWARD);
+   delay(1000 * 0.5);
+   myMotor->run(RELEASE);
+   delay(1000 * 0.5);
+  }
 }
 
-
 void feed() {
+ digitalWrite(ledPin, LOW);
  // activate motor
  Serial.println("Feeding!");
  myMotor->run(FORWARD);
