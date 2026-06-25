@@ -141,13 +141,21 @@ void loop() {
   }
   lastButtonState = buttonState;
 
-  if (nextAutoFeedIndex < feedScheduleCount && timeElapseDay > feedTimes[nextAutoFeedIndex]) {
+  if (nextAutoFeedIndex < feedScheduleCount && timeElapseDay >= feedTimes[nextAutoFeedIndex]) {
+    Serial.print("Auto slot reached idx=");
+    Serial.print(nextAutoFeedIndex);
+    Serial.print(" elapsed_ms=");
+    Serial.println(timeElapseDay);
+
     if (feedCounterDay < maxFeedDay && !isFeedDelay) {
+      Serial.println("Auto feeding now");
       feed();
-    }
-    nextAutoFeedIndex++;
-    while (nextAutoFeedIndex < feedScheduleCount && timeElapseDay > feedTimes[nextAutoFeedIndex]) {
       nextAutoFeedIndex++;
+    } else {
+      Serial.print("Auto feed blocked: max/day=");
+      Serial.print(feedCounterDay);
+      Serial.print(" delay=");
+      Serial.println(isFeedDelay ? "true" : "false");
     }
   }
 

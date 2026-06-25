@@ -1,0 +1,134 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Arduino: Init Toolchain",
+      "type": "shell",
+      "command": "arduino-cli",
+      "args": [
+        "core",
+        "update-index",
+        "--config-file",
+        "${workspaceFolder}/arduino-cli.yaml"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Arduino: Install Adafruit AVR Core",
+      "type": "shell",
+      "command": "arduino-cli",
+      "args": [
+        "core",
+        "install",
+        "adafruit:avr",
+        "--config-file",
+        "${workspaceFolder}/arduino-cli.yaml"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Arduino: Install Adafruit SAMD Core",
+      "type": "shell",
+      "command": "arduino-cli",
+      "args": [
+        "core",
+        "install",
+        "adafruit:samd",
+        "--config-file",
+        "${workspaceFolder}/arduino-cli.yaml"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Arduino: Install Required Libraries",
+      "type": "shell",
+      "command": "arduino-cli",
+      "args": [
+        "lib",
+        "install",
+        "Adafruit Motor Shield V2 Library",
+        "--config-file",
+        "${workspaceFolder}/arduino-cli.yaml"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Arduino: Compile (Metro 328)",
+      "type": "shell",
+      "command": "arduino-cli",
+      "args": [
+        "compile",
+        "-b",
+        "adafruit:avr:metro",
+        "--build-path",
+        "${workspaceFolder}/build/metro328",
+        "--config-file",
+        "${workspaceFolder}/arduino-cli.yaml",
+        "${workspaceFolder}"
+      ],
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Arduino: Compile (Grand Central M4)",
+      "type": "shell",
+      "command": "arduino-cli",
+      "args": [
+        "compile",
+        "-b",
+        "adafruit:samd:adafruit_grandcentral_m4",
+        "--build-path",
+        "${workspaceFolder}/build/grandcentral_m4",
+        "--config-file",
+        "${workspaceFolder}/arduino-cli.yaml",
+        "${workspaceFolder}"
+      ],
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Arduino: Board List",
+      "type": "shell",
+      "command": "arduino-cli",
+      "args": [
+        "board",
+        "list",
+        "--config-file",
+        "${workspaceFolder}/arduino-cli.yaml"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Arduino: Upload (Metro 328 @ /dev/cu.usbmodem101)",
+      "type": "shell",
+      "command": "arduino-cli",
+      "args": [
+        "upload",
+        "-b",
+        "adafruit:avr:metro",
+        "-p",
+        "/dev/cu.usbmodem101",
+        "--config-file",
+        "${workspaceFolder}/arduino-cli.yaml",
+        "${workspaceFolder}"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Arduino: Upload (Grand Central M4 @ /dev/cu.usbmodem101)",
+      "type": "shell",
+      "command": "arduino-cli",
+      "args": [
+        "upload",
+        "-b",
+        "adafruit:samd:adafruit_grandcentral_m4",
+        "-p",
+        "/dev/cu.usbmodem101",
+        "--config-file",
+        "${workspaceFolder}/arduino-cli.yaml",
+        "${workspaceFolder}"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}
