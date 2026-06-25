@@ -23,25 +23,29 @@ const unsigned int motorOut = 3;
 
 // Declare program constants and variables
 const unsigned int maxFeedDay = 8;
-const unsigned long feedTime0 = 1000UL * 60 * 5;
-const unsigned long feedTime1 = 1000UL * 60 * 15;
-const unsigned long feedTime2 = 1000UL * 60 * 20;
-const unsigned long feedTime3 = 1000UL * 60 * 25;
-
-const unsigned long feedDelayInterval = (1000UL * 60 * 5); // 5 minute delay
+const unsigned long feedDelayInterval = 1000UL * 60 * 5; // 5 minute delay
+const unsigned long feedTimes[] = {
+  1000UL * 60 * 5,
+  1000UL * 60 * 15,
+  1000UL * 60 * 20,
+  1000UL * 60 * 25
+};
+const unsigned int feedScheduleCount = sizeof(feedTimes) / sizeof(feedTimes[0]);
+const unsigned long dayInterval = 1000UL * 60 * 60 * 24;
 
 unsigned long timeStartDay = 0;
 unsigned long timeLastFeed = 0;
+unsigned long timeElapseDay = 0;
+unsigned long timeElapseLastFeed = 0;
 
 unsigned int feedCounterDay = 0;
+unsigned int nextAutoFeedIndex = 0;
 
 bool isFeedDelay = false;
-bool isFeedTime = false;
 bool canFeed = true;
 
 unsigned int buttonState = 0;
-unsigned int lastButtonState = 0;
-bool buttonPress = false;
+unsigned int lastButtonState = HIGH;
 
 Adafruit_MotorShield AFMS = Adafruit_MotorShield();
 Adafruit_DCMotor *myMotor = AFMS.getMotor(motorOut);
@@ -50,16 +54,13 @@ Adafruit_DCMotor *myMotor = AFMS.getMotor(motorOut);
 void setup() {
   Serial.begin(9600);
   Serial.println("Coach's feeder program");
-  
-  // start timer for the 24 clock
-  timeStartDay = millis();
-  timeStartDayPart = millis();
 
-  // setup button and LED
-  pinMode(buttonPin, INPUT);
+  timeStartDay = millis();
+  timeLastFeed = millis();
+
+  pinMode(buttonPin, INPUT_PULLUP);
   pinMode(ledPin, OUTPUT);
 
-  // setup motor
   Serial.println("Initializing motor");
   AFMS.begin();
   myMotor->setSpeed(150);
@@ -116,66 +117,43 @@ void verboseUpdate() {
   Serial.print(feedCounterDay);
   Serial.println("\n");
 
-  Serial.println("Feedings in day part:");
-  Serial.print(feedCounterDayPart);
-  Serial.println("\n");
 }
 
 void loop() {
-  // detect button state
+  unsigned long now = millis();
+
   buttonState = digitalRead(buttonPin);
+  timeElapseDay = now - timeStartDay;
+  timeElapseLastFeed = now - timeLastFeed;
 
-  // verboseUpdate();
+  isFeedDelay = (timeElapseLastFeed < feedDelayInterval);
 
-  // determine eligibility for feeding
-  timeElapseDay = millis() - timeStartDay;
-  timeElapseLastFeed = millis() - timeLastFeed;
-
-// manual feeding logic start
-  if (timeElapseLastFeed < feedDelayInterval) {
-    isFeedDelay = true;
-    //Serial.println("Feed Delay Active");
-  } else {
-    isFeedDelay = false;
-    //Serial.println("Feed Delay Inactive");
-  }
-
-  if (feedCounterDay <= maxFeedDay and not isFeedDelay) {
+  if (feedCounterDay < maxFeedDay && !isFeedDelay) {
     canFeed = true;
     digitalWrite(ledPin, HIGH);
-    //Serial.println("Ready to feed");
   } else {
     canFeed = false;
     digitalWrite(ledPin, LOW);
-    //Serial.println("Not Ready to feed");
   }
 
-  if (buttonState != lastButtonState and canFeed) {
-    if (buttonState == HIGH and feedCounterDay <= maxFeedDay and not isFeedDelay) {
-      feed();
-      //verboseUpdate();
-    }
+  if (buttonState == LOW && lastButtonState == HIGH && canFeed) {
+    feed();
   }
   lastButtonState = buttonState;
-// end of manual feeding logic
-  
 
-// hard coded feeding times; ignores manual feeding logic
-  if (feedCounterDayPart < (maxFeedDayPart - 1) and timeElapseDay > feedTime0) {
-    feed(); 
-  }
-  if (feedCounterDayPart < maxFeedDayPart and timeElapseDay > feedTime1) {
-    feed(); 
-  }
-  if (feedCounterDayPart < (normalFeedDay -1) and timeElapseDay > feedTime2) {
-    feed(); 
-  }
-  if (feedCounterDayPart < normalFeedDay and timeElapseDay > feedTime3) {
-    feed(); 
+  if (nextAutoFeedIndex < feedScheduleCount && timeElapseDay > feedTimes[nextAutoFeedIndex]) {
+    if (feedCounterDay < maxFeedDay && !isFeedDelay) {
+      feed();
+    }
+    nextAutoFeedIndex++;
+    while (nextAutoFeedIndex < feedScheduleCount && timeElapseDay > feedTimes[nextAutoFeedIndex]) {
+      nextAutoFeedIndex++;
+    }
   }
 
-  if (timeElapseDay > dayPartInterval) {
-    feedCounterDayPart = 0; // with only 2 day parts, we can ignore the feedCounter for the day part when during the latter day part
+  if (timeElapseDay >= dayInterval) {
+    timeStartDay = now;
+    feedCounterDay = 0;
+    nextAutoFeedIndex = 0;
   }
-  
 }
