@@ -62,28 +62,35 @@ void setup() {
   pinMode(ledPin, OUTPUT);
 
   Serial.println("Initializing motor");
-  AFMS.begin();
+
+  if (!AFMS.begin()) {
+    Serial.println("Could not find Adafruit Motor Shield V2. Check I2C/wiring/power.");
+    while (1);
+  }
+
+  Serial.println("Motor shield found");
   myMotor->setSpeed(150);
+  myMotor->run(RELEASE);
 
   // run tests
   // blink the LED
   Serial.println("LED test");
   for (int i = 0; i <= 3; i++) {
     digitalWrite(ledPin, HIGH);
-    delay(1000 * 0.5);
+    delay(500);
     digitalWrite(ledPin, LOW);
-    delay(1000 * 0.5);
+    delay(500);
   }
-  
 
   // run the motor in short bursts
   Serial.println("Motor test");
   for (int i = 0; i <= 3; i++) {
-   Serial.println(i);
-   myMotor->run(FORWARD);
-   delay(1000 * 0.5);
-   myMotor->run(RELEASE);
-   delay(1000 * 0.5);
+    Serial.println(i);
+    myMotor->setSpeed(150);
+    myMotor->run(FORWARD);
+    delay(500);
+    myMotor->run(RELEASE);
+    delay(500);
   }
 }
 
