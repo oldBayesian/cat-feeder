@@ -42,16 +42,18 @@ arduino-cli board list --config-file arduino-cli.yaml
 
 ## Upload
 
+These commands are meant to be run by the user from this project folder (the sketch root). They require a connected board and a prior compile step for the same target board.
+
 Replace `/dev/cu.usbmodem101` with your actual port.
 
 ```bash
-arduino-cli upload -b adafruit:avr:metro -p /dev/cu.usbmodem101 --config-file arduino-cli.yaml .
+arduino-cli upload -b adafruit:avr:metro -p /dev/cu.usbmodem101 --input-dir build/metro328 --config-file arduino-cli.yaml .
 ```
 
 For Grand Central M4 Express:
 
 ```bash
-arduino-cli upload -b adafruit:samd:adafruit_grandcentral_m4 -p /dev/cu.usbmodem101 --config-file arduino-cli.yaml .
+arduino-cli upload -b adafruit:samd:adafruit_grandcentral_m4 -p /dev/cu.usbmodem101 --input-dir build/grandcentral_m4 --config-file arduino-cli.yaml .
 ```
 
 ## VS Code tasks

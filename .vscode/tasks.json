@@ -108,6 +108,8 @@
         "adafruit:avr:metro",
         "-p",
         "/dev/cu.usbmodem101",
+        "--input-dir",
+        "${workspaceFolder}/build/metro328",
         "--config-file",
         "${workspaceFolder}/arduino-cli.yaml",
         "${workspaceFolder}"
@@ -124,6 +126,8 @@
         "adafruit:samd:adafruit_grandcentral_m4",
         "-p",
         "/dev/cu.usbmodem101",
+        "--input-dir",
+        "${workspaceFolder}/build/grandcentral_m4",
         "--config-file",
         "${workspaceFolder}/arduino-cli.yaml",
         "${workspaceFolder}"
