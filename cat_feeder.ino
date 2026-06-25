@@ -22,26 +22,18 @@ const unsigned int buttonPin = 10;
 const unsigned int motorOut = 3;
 
 // Declare program constants and variables
-const unsigned int normalFeedDay = 4;
-const unsigned int maxFeedDay = 6;
-const unsigned int maxFeedDayPart = 2;
-const unsigned long feedTime0 = 1000UL * 60 * 60 * 6; // feeding at 6a
-const unsigned long feedTime1 = 1000UL * 60 * 60 * 7; // feeding at 7a
-const unsigned long feedTime2 = 1000UL * 60 * 60 * 17; // feeding at 5p
-const unsigned long feedTime3 = 1000UL * 60 * 60 * 18; // feeding at 6p
+const unsigned int maxFeedDay = 8;
+const unsigned long feedTime0 = 1000UL * 60 * 5;
+const unsigned long feedTime1 = 1000UL * 60 * 15;
+const unsigned long feedTime2 = 1000UL * 60 * 20;
+const unsigned long feedTime3 = 1000UL * 60 * 25;
 
-const unsigned long dayPartInterval = (1000UL * 60 * 60 * 12); // day parts are 12 hours
 const unsigned long feedDelayInterval = (1000UL * 60 * 5); // 5 minute delay
 
 unsigned long timeStartDay = 0;
-unsigned long timeElapseDay = 0;
-unsigned long timeStartDayPart = 0;
-unsigned long timeElapseDayPart = 0;
 unsigned long timeLastFeed = 0;
-unsigned long timeElapseLastFeed = 0;
 
 unsigned int feedCounterDay = 0;
-unsigned int feedCounterDayPart = 0;
 
 bool isFeedDelay = false;
 bool isFeedTime = false;
@@ -99,13 +91,12 @@ void feed() {
  // activate motor
  Serial.println("Feeding!");
  myMotor->run(FORWARD);
- delay(1000 * 10);
+ delay(1000 * 5);
  myMotor->run(RELEASE);
  
  // update variables
  timeLastFeed = millis();
  feedCounterDay++;
- feedCounterDayPart++;
 
  delay(1000);
 }
@@ -138,7 +129,6 @@ void loop() {
 
   // determine eligibility for feeding
   timeElapseDay = millis() - timeStartDay;
-  timeElapseDayPart = millis() - timeStartDayPart;
   timeElapseLastFeed = millis() - timeLastFeed;
 
 // manual feeding logic start
@@ -150,7 +140,7 @@ void loop() {
     //Serial.println("Feed Delay Inactive");
   }
 
-  if (feedCounterDay <= maxFeedDay and feedCounterDayPart <= maxFeedDayPart and not isFeedDelay) {
+  if (feedCounterDay <= maxFeedDay and not isFeedDelay) {
     canFeed = true;
     digitalWrite(ledPin, HIGH);
     //Serial.println("Ready to feed");
@@ -161,7 +151,7 @@ void loop() {
   }
 
   if (buttonState != lastButtonState and canFeed) {
-    if (buttonState == HIGH and feedCounterDay <= maxFeedDay and feedCounterDayPart <= maxFeedDayPart and not isFeedDelay) {
+    if (buttonState == HIGH and feedCounterDay <= maxFeedDay and not isFeedDelay) {
       feed();
       //verboseUpdate();
     }
