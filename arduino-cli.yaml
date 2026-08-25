@@ -3,9 +3,11 @@ board_manager:
     - https://adafruit.github.io/arduino-board-index/package_adafruit_index.json
 
 directories:
-  data: /Users/rcjason/fun/cat-feeder/.arduino/data
-  downloads: /Users/rcjason/fun/cat-feeder/.arduino/staging
-  user: /Users/rcjason/fun/cat-feeder/.arduino/user
+
+
+  data: /home/rcjason/projects/cat-feeder/.arduino/data
+  downloads: /home/rcjason/projects/cat-feeder/.arduino/staging
+  user: /home/rcjason/projects/cat-feeder/.arduino/user
 
 library:
   enable_unsafe_install: false

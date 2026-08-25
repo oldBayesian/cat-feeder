@@ -19,7 +19,9 @@ if automatic feeding criteria is met, deliver a feeding
 // Declare constants for wiring
 const unsigned int ledPin = 13;
 const unsigned int buttonPin = 10;
-const unsigned int motorOut = 3;
+const unsigned int motorOut = 4;
+const unsigned int vmaDoPin = 8;
+const unsigned long calibrationWindowMs = 15000UL;
 
 // Declare program constants and variables
 const unsigned int maxFeedDay = 8;
@@ -47,18 +49,77 @@ bool canFeed = true;
 unsigned int buttonState = 0;
 unsigned int lastButtonState = HIGH;
 
+String serialCmd = "";
+bool calibrationMode = false;
+bool calibrationWindowActive = true;
+unsigned long calibrationStartMs = 0;
+
 Adafruit_MotorShield AFMS = Adafruit_MotorShield();
 Adafruit_DCMotor *myMotor = AFMS.getMotor(motorOut);
 
+void handleSerialCommands() {
+  while (Serial.available()) {
+    char ch = Serial.read();
+
+    if (ch == '\n' || ch == '\r') {
+      if (serialCmd.equalsIgnoreCase("CAL")) {
+        calibrationMode = true;
+        calibrationWindowActive = false;
+        Serial.println("Calibration mode enabled");
+      } else if (serialCmd.equalsIgnoreCase("RUN")) {
+        calibrationMode = false;
+        calibrationWindowActive = false;
+        Serial.println("Normal feeder mode enabled");
+      } else if (serialCmd.length() > 0) {
+        Serial.print("Unknown command: ");
+        Serial.println(serialCmd);
+      }
+      serialCmd = "";
+      break;
+    } else {
+      serialCmd += ch;
+    }
+  }
+}
+
+void runCalibration() {
+  int state = digitalRead(vmaDoPin);
+  bool active = (state == HIGH);
+
+  Serial.print("VMA309 DO = ");
+  Serial.print(state == HIGH ? "HIGH" : "LOW");
+  Serial.print(" | Status: ");
+  Serial.print(active ? "THRESHOLD TRIGGERED" : "BELOW THRESHOLD");
+  Serial.println(active ? " (likely kibble sound detected)" : " (quiet / no trigger)");
+
+  Serial.println("Tune the VMA309 pot until the status flips at the desired kibble level.");
+  delay(250);
+}
+
+void checkCalibrationWindow() {
+  if (!calibrationWindowActive) {
+    return;
+  }
+
+  if ((millis() - calibrationStartMs) >= calibrationWindowMs) {
+    calibrationWindowActive = false;
+    calibrationMode = false;
+    Serial.println("15 second calibration window expired. Defaulting to RUN mode.");
+  }
+}
 
 void setup() {
   Serial.begin(9600);
   Serial.println("Coach's feeder program");
+  Serial.println("Type CAL to enter calibration mode for 15 seconds.");
+  Serial.println("If no command is received, the feeder defaults to RUN mode.");
+  calibrationStartMs = millis();
 
   timeStartDay = millis();
   timeLastFeed = millis();
 
   pinMode(buttonPin, INPUT_PULLUP);
+  pinMode(vmaDoPin, INPUT);
   pinMode(ledPin, OUTPUT);
 
   Serial.println("Initializing motor");
@@ -127,6 +188,14 @@ void verboseUpdate() {
 }
 
 void loop() {
+  checkCalibrationWindow();
+  handleSerialCommands();
+
+  if (calibrationMode) {
+    runCalibration();
+    return;
+  }
+
   unsigned long now = millis();
 
   buttonState = digitalRead(buttonPin);
