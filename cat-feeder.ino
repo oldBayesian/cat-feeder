@@ -18,10 +18,15 @@ if automatic feeding criteria is met, deliver a feeding
 
 // Declare constants for wiring
 const unsigned int ledPin = 13;
-const unsigned int buttonPin = 10;
 const unsigned int motorOut = 4;
-const unsigned int vmaDoPin = 8;
-const unsigned long calibrationWindowMs = 15000UL;
+const unsigned int soundSensorPin = A8;
+const unsigned int ultrasonicTriggerPin = 14;
+const unsigned int ultrasonicEchoPin = 15;
+const unsigned long sensorWindowMs = 10UL;
+const unsigned long spikeThreshold = 20UL;
+const unsigned long spikeRefractoryMs = 100UL;
+const unsigned int distanceAverageSamples = 10;
+const float maxDistanceCm = 30.0;
 
 // Declare program constants and variables
 const unsigned int maxFeedDay = 8;
@@ -46,13 +51,22 @@ unsigned int nextAutoFeedIndex = 0;
 bool isFeedDelay = false;
 bool canFeed = true;
 
-unsigned int buttonState = 0;
-unsigned int lastButtonState = HIGH;
-
 String serialCmd = "";
-bool calibrationMode = false;
-bool calibrationWindowActive = true;
-unsigned long calibrationStartMs = 0;
+bool allTestMode = false;
+unsigned long motorRunUntilMs = 0;
+
+unsigned long sensorWindowStartMs = 0;
+int sensorMinValue = 4095;
+int sensorMaxValue = 0;
+long sensorSum = 0;
+unsigned long sensorSampleCount = 0;
+unsigned long kibbleCount = 0;
+unsigned long lastSpikeMs = 0;
+bool spikeArmed = true;
+float distanceSamples[distanceAverageSamples] = {};
+float distanceSampleSum = 0;
+unsigned int distanceSampleIndex = 0;
+unsigned int distanceSampleCount = 0;
 
 Adafruit_MotorShield AFMS = Adafruit_MotorShield();
 Adafruit_DCMotor *myMotor = AFMS.getMotor(motorOut);
@@ -62,14 +76,31 @@ void handleSerialCommands() {
     char ch = Serial.read();
 
     if (ch == '\n' || ch == '\r') {
-      if (serialCmd.equalsIgnoreCase("CAL")) {
-        calibrationMode = true;
-        calibrationWindowActive = false;
-        Serial.println("Calibration mode enabled");
-      } else if (serialCmd.equalsIgnoreCase("RUN")) {
-        calibrationMode = false;
-        calibrationWindowActive = false;
+      if (serialCmd.equalsIgnoreCase("RUN")) {
+        allTestMode = false;
+        motorRunUntilMs = 0;
+        myMotor->run(RELEASE);
         Serial.println("Normal feeder mode enabled");
+      } else if (serialCmd.equalsIgnoreCase("MT")) {
+        allTestMode = false;
+        startMotor(5);
+        Serial.println("MT | MOTOR ON | 5 seconds");
+      } else if (serialCmd.equalsIgnoreCase("ALLT")) {
+        allTestMode = true;
+        sensorWindowStartMs = millis();
+        kibbleCount = 0;
+        lastSpikeMs = 0;
+        spikeArmed = true;
+        distanceSampleSum = 0;
+        distanceSampleIndex = 0;
+        distanceSampleCount = 0;
+        for (unsigned int i = 0; i < distanceAverageSamples; i++) {
+          distanceSamples[i] = 0;
+        }
+        resetSensorWindow();
+        Serial.println("ALLT | time_ms|peak_to_peak|kibble_count|distance_cm|motor_active");
+      } else if (allTestMode && isDurationCommand(serialCmd)) {
+        startMotor(serialCmd.toFloat());
       } else if (serialCmd.length() > 0) {
         Serial.print("Unknown command: ");
         Serial.println(serialCmd);
@@ -82,47 +113,134 @@ void handleSerialCommands() {
   }
 }
 
-void runCalibration() {
-  int state = digitalRead(vmaDoPin);
-  bool active = (state == HIGH);
-
-  Serial.print("VMA309 DO = ");
-  Serial.print(state == HIGH ? "HIGH" : "LOW");
-  Serial.print(" | Status: ");
-  Serial.print(active ? "THRESHOLD TRIGGERED" : "BELOW THRESHOLD");
-  Serial.println(active ? " (likely kibble sound detected)" : " (quiet / no trigger)");
-
-  Serial.println("Tune the VMA309 pot until the status flips at the desired kibble level.");
-  delay(250);
+bool isDurationCommand(const String &value) {
+  if (value.length() == 0) return false;
+  bool decimalSeen = false;
+  for (unsigned int i = 0; i < value.length(); i++) {
+    char ch = value.charAt(i);
+    if (ch == '.' && !decimalSeen) {
+      decimalSeen = true;
+    } else if (ch < '0' || ch > '9') {
+      return false;
+    }
+  }
+  return true;
 }
 
-void checkCalibrationWindow() {
-  if (!calibrationWindowActive) {
-    return;
+void startMotor(float seconds) {
+  unsigned long durationMs = (unsigned long)(seconds * 1000.0);
+  motorRunUntilMs = millis() + durationMs;
+  myMotor->setSpeed(150);
+  myMotor->run(FORWARD);
+}
+
+bool motorIsActive() {
+  return (long)(motorRunUntilMs - millis()) > 0;
+}
+
+void updateMotor() {
+  if (!motorIsActive()) {
+    motorRunUntilMs = 0;
+    myMotor->run(RELEASE);
+  }
+}
+
+void resetSensorWindow() {
+  sensorMinValue = 4095;
+  sensorMaxValue = 0;
+  sensorSum = 0;
+  sensorSampleCount = 0;
+}
+
+float readDistanceCm() {
+  digitalWrite(ultrasonicTriggerPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(ultrasonicTriggerPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(ultrasonicTriggerPin, LOW);
+
+  unsigned long echoDuration = pulseIn(ultrasonicEchoPin, HIGH, 30000);
+  if (echoDuration > 0) {
+    float distanceCm = echoDuration * 0.0343 / 2.0;
+    if (distanceCm > maxDistanceCm) distanceCm = maxDistanceCm;
+    distanceSampleSum -= distanceSamples[distanceSampleIndex];
+    distanceSamples[distanceSampleIndex] = distanceCm;
+    distanceSampleSum += distanceCm;
+    distanceSampleIndex = (distanceSampleIndex + 1) % distanceAverageSamples;
+    if (distanceSampleCount < distanceAverageSamples) distanceSampleCount++;
   }
 
-  if ((millis() - calibrationStartMs) >= calibrationWindowMs) {
-    calibrationWindowActive = false;
-    calibrationMode = false;
-    Serial.println("15 second calibration window expired. Defaulting to RUN mode.");
+  return distanceSampleCount > 0 ? distanceSampleSum / distanceSampleCount : 0;
+}
+
+void runAllTest() {
+  unsigned long now = millis();
+  int value = analogRead(soundSensorPin);
+  if (value < sensorMinValue) sensorMinValue = value;
+  if (value > sensorMaxValue) sensorMaxValue = value;
+  sensorSum += value;
+  sensorSampleCount++;
+
+  if ((now - sensorWindowStartMs) >= sensorWindowMs) {
+    unsigned int peakToPeak = sensorMaxValue - sensorMinValue;
+    if (peakToPeak < spikeThreshold) {
+      spikeArmed = true;
+    } else if (spikeArmed && (now - lastSpikeMs) >= spikeRefractoryMs) {
+      kibbleCount++;
+      lastSpikeMs = now;
+      spikeArmed = false;
+    }
+
+    float distanceCm = readDistanceCm();
+    Serial.print(now);
+    Serial.print("|");
+    Serial.print(peakToPeak);
+    Serial.print("|");
+    Serial.print(kibbleCount);
+    Serial.print("|");
+    Serial.print(distanceCm, 2);
+    Serial.print("|");
+    Serial.println(motorIsActive() ? 1 : 0);
+
+    resetSensorWindow();
+    sensorWindowStartMs = millis();
+  }
+}
+
+void runStartupTests() {
+  Serial.println("LED test");
+  for (int i = 0; i <= 3; i++) {
+    digitalWrite(ledPin, HIGH);
+    delay(500);
+    digitalWrite(ledPin, LOW);
+    delay(500);
+  }
+
+  Serial.println("Motor test");
+  for (int i = 0; i <= 3; i++) {
+    Serial.println(i);
+    myMotor->setSpeed(150);
+    myMotor->run(FORWARD);
+    delay(500);
+    myMotor->run(RELEASE);
+    delay(500);
   }
 }
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   Serial.println("Coach's feeder program");
-  Serial.println("Type CAL to enter calibration mode for 15 seconds.");
-  Serial.println("If no command is received, the feeder defaults to RUN mode.");
-  calibrationStartMs = millis();
+  Serial.println("Commands: MT, ALLT, RUN");
 
   timeStartDay = millis();
   timeLastFeed = millis();
 
-  pinMode(buttonPin, INPUT_PULLUP);
-  pinMode(vmaDoPin, INPUT);
+  pinMode(ultrasonicTriggerPin, OUTPUT);
+  pinMode(ultrasonicEchoPin, INPUT);
+  digitalWrite(ultrasonicTriggerPin, LOW);
   pinMode(ledPin, OUTPUT);
 
-  Serial.println("Initializing motor");
+  Serial.println("Initializing motor shield");
 
   if (!AFMS.begin()) {
     Serial.println("Could not find Adafruit Motor Shield V2. Check I2C/wiring/power.");
@@ -133,26 +251,7 @@ void setup() {
   myMotor->setSpeed(150);
   myMotor->run(RELEASE);
 
-  // run tests
-  // blink the LED
-  Serial.println("LED test");
-  for (int i = 0; i <= 3; i++) {
-    digitalWrite(ledPin, HIGH);
-    delay(500);
-    digitalWrite(ledPin, LOW);
-    delay(500);
-  }
-
-  // run the motor in short bursts
-  Serial.println("Motor test");
-  for (int i = 0; i <= 3; i++) {
-    Serial.println(i);
-    myMotor->setSpeed(150);
-    myMotor->run(FORWARD);
-    delay(500);
-    myMotor->run(RELEASE);
-    delay(500);
-  }
+  Serial.println("The motor will remain idle until MT or a numeric ALLT command is entered.");
 }
 
 void feed() {
@@ -172,14 +271,6 @@ void feed() {
 
 void verboseUpdate() {
   Serial.println("<<<<<<<<<<<<<<<<<<<<<<>>>>>>>>>>>>>>>>>>>>");
-
-  Serial.println("Button State:");
-  Serial.print(buttonState);
-  Serial.println("\n");
-
-  Serial.println("Last Button State:");
-  Serial.print(lastButtonState);
-  Serial.println("\n");
   
   Serial.println("Feedings today:");
   Serial.print(feedCounterDay);
@@ -188,17 +279,16 @@ void verboseUpdate() {
 }
 
 void loop() {
-  checkCalibrationWindow();
   handleSerialCommands();
+  updateMotor();
 
-  if (calibrationMode) {
-    runCalibration();
+  if (allTestMode) {
+    runAllTest();
     return;
   }
 
   unsigned long now = millis();
 
-  buttonState = digitalRead(buttonPin);
   timeElapseDay = now - timeStartDay;
   timeElapseLastFeed = now - timeLastFeed;
 
@@ -211,11 +301,6 @@ void loop() {
     canFeed = false;
     digitalWrite(ledPin, LOW);
   }
-
-  if (buttonState == LOW && lastButtonState == HIGH && canFeed) {
-    feed();
-  }
-  lastButtonState = buttonState;
 
   if (nextAutoFeedIndex < feedScheduleCount && timeElapseDay >= feedTimes[nextAutoFeedIndex]) {
     Serial.print("Auto slot reached idx=");
