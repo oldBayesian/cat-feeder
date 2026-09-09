@@ -14,7 +14,7 @@
       "problemMatcher": []
     },
     {
-      "label": "Arduino: Install Adafruit AVR Core",
+      "label": "Arduino: Install Adafruit AVR Core (Legacy Metro)",
       "type": "shell",
       "command": "arduino-cli",
       "args": [
@@ -53,23 +53,6 @@
       "problemMatcher": []
     },
     {
-      "label": "Arduino: Compile (Metro 328)",
-      "type": "shell",
-      "command": "arduino-cli",
-      "args": [
-        "compile",
-        "-b",
-        "adafruit:avr:metro",
-        "--build-path",
-        "${workspaceFolder}/build/metro328",
-        "--config-file",
-        "${workspaceFolder}/arduino-cli.yaml",
-        "${workspaceFolder}"
-      ],
-      "group": "build",
-      "problemMatcher": []
-    },
-    {
       "label": "Arduino: Compile (Grand Central M4)",
       "type": "shell",
       "command": "arduino-cli",
@@ -79,6 +62,23 @@
         "adafruit:samd:adafruit_grandcentral_m4",
         "--build-path",
         "${workspaceFolder}/build/grandcentral_m4",
+        "--config-file",
+        "${workspaceFolder}/arduino-cli.yaml",
+        "${workspaceFolder}"
+      ],
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Arduino: Compile (Metro 328 - Legacy)",
+      "type": "shell",
+      "command": "arduino-cli",
+      "args": [
+        "compile",
+        "-b",
+        "adafruit:avr:metro",
+        "--build-path",
+        "${workspaceFolder}/build/metro328",
         "--config-file",
         "${workspaceFolder}/arduino-cli.yaml",
         "${workspaceFolder}"
@@ -99,7 +99,25 @@
       "problemMatcher": []
     },
     {
-      "label": "Arduino: Upload (Metro 328 @ /dev/cu.usbmodem101)",
+      "label": "Arduino: Upload (Grand Central M4 @ /dev/ttyACM0)",
+      "type": "shell",
+      "command": "arduino-cli",
+      "args": [
+        "upload",
+        "-b",
+        "adafruit:samd:adafruit_grandcentral_m4",
+        "-p",
+        "/dev/ttyACM0",
+        "--input-dir",
+        "${workspaceFolder}/build/grandcentral_m4",
+        "--config-file",
+        "${workspaceFolder}/arduino-cli.yaml",
+        "${workspaceFolder}"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Arduino: Upload (Metro 328 @ /dev/cu.usbmodem101 - Legacy)",
       "type": "shell",
       "command": "arduino-cli",
       "args": [
@@ -110,24 +128,6 @@
         "/dev/cu.usbmodem101",
         "--input-dir",
         "${workspaceFolder}/build/metro328",
-        "--config-file",
-        "${workspaceFolder}/arduino-cli.yaml",
-        "${workspaceFolder}"
-      ],
-      "problemMatcher": []
-    },
-    {
-      "label": "Arduino: Upload (Grand Central M4 @ /dev/cu.usbmodem101)",
-      "type": "shell",
-      "command": "arduino-cli",
-      "args": [
-        "upload",
-        "-b",
-        "adafruit:samd:adafruit_grandcentral_m4",
-        "-p",
-        "/dev/cu.usbmodem101",
-        "--input-dir",
-        "${workspaceFolder}/build/grandcentral_m4",
         "--config-file",
         "${workspaceFolder}/arduino-cli.yaml",
         "${workspaceFolder}"

@@ -1,10 +1,12 @@
 # Cat Feeder Arduino Setup
 
-This project uses Arduino CLI for reproducible compile/upload workflows.
+This project runs on an Adafruit Grand Central M4 Express and uses Arduino CLI
+for reproducible compile and upload workflows.
 
 ## Prerequisites
 
 - `arduino-cli` (installed)
+- Adafruit Grand Central M4 Express
 - USB cable + board connected
 
 ## One-time setup
@@ -13,22 +15,13 @@ From this folder:
 
 ```bash
 arduino-cli core update-index --config-file arduino-cli.yaml
-arduino-cli core install adafruit:avr --config-file arduino-cli.yaml
 arduino-cli core install adafruit:samd --config-file arduino-cli.yaml
 arduino-cli lib install "Adafruit Motor Shield V2 Library" --config-file arduino-cli.yaml
 ```
 
-If you only use the Metro 328, the `adafruit:samd` install is optional.
-
 ## Compile
 
-Adafruit Metro (ATmega328):
-
-```bash
-arduino-cli compile -b adafruit:avr:metro --build-path build/metro328 --config-file arduino-cli.yaml .
-```
-
-Adafruit Grand Central M4 Express:
+Compile for the Grand Central M4 Express:
 
 ```bash
 arduino-cli compile -b adafruit:samd:adafruit_grandcentral_m4 --build-path build/grandcentral_m4 --config-file arduino-cli.yaml .
@@ -42,18 +35,13 @@ arduino-cli board list --config-file arduino-cli.yaml
 
 ## Upload
 
-These commands are meant to be run by the user from this project folder (the sketch root). They require a connected board and a prior compile step for the same target board.
+The upload command requires a connected Grand Central M4 and a prior compile for
+the same board.
 
-Replace `/dev/cu.usbmodem101` with your actual port.
-
-```bash
-arduino-cli upload -b adafruit:avr:metro -p /dev/cu.usbmodem101 --input-dir build/metro328 --config-file arduino-cli.yaml .
-```
-
-For Grand Central M4 Express:
+Replace `/dev/ttyACM0` with the port reported on your system.
 
 ```bash
-arduino-cli upload -b adafruit:samd:adafruit_grandcentral_m4 -p /dev/cu.usbmodem101 --input-dir build/grandcentral_m4 --config-file arduino-cli.yaml .
+arduino-cli upload -b adafruit:samd:adafruit_grandcentral_m4 -p /dev/ttyACM0 --input-dir build/grandcentral_m4 --config-file arduino-cli.yaml .
 ```
 
 ## VS Code tasks
@@ -61,16 +49,34 @@ arduino-cli upload -b adafruit:samd:adafruit_grandcentral_m4 -p /dev/cu.usbmodem
 Run from Command Palette: `Tasks: Run Task`
 
 - `Arduino: Init Toolchain`
-- `Arduino: Install Adafruit AVR Core`
 - `Arduino: Install Adafruit SAMD Core`
 - `Arduino: Install Required Libraries`
-- `Arduino: Compile (Metro 328)`
 - `Arduino: Compile (Grand Central M4)`
 - `Arduino: Board List`
-- `Arduino: Upload (Metro 328 @ /dev/cu.usbmodem101)`
-- `Arduino: Upload (Grand Central M4 @ /dev/cu.usbmodem101)`
+- `Arduino: Upload (Grand Central M4 @ /dev/ttyACM0)`
 
-Before upload, edit the upload task port in `.vscode/tasks.json` to match your board.
+Before uploading, edit the Grand Central upload task port in
+`.vscode/tasks.json` to match the port reported by `Arduino: Board List`.
+
+## Telemetry run
+
+After uploading, open the serial port at `115200` baud and enter:
+
+```text
+ALLT
+5
+```
+
+`ALLT` arms telemetry mode. The numeric command is the motor duration in
+seconds. Each run emits 5 seconds of pre-motor data, the motor run, and 15
+seconds of post-motor data as CSV. No sensor rows are emitted while telemetry
+is idle.
+
+## Legacy Metro support
+
+The repository retains Metro 328 tasks for older hardware, but the current
+sketch uses Grand Central M4 analog pin mappings. Use the Grand Central M4
+workflow above for this project.
 
 ## Notes
 
