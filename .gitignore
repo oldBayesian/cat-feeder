@@ -1,3 +1,4 @@
 .arduino/
 build/
 sim_schedule
+output.csv
